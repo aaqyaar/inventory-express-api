@@ -1,48 +1,77 @@
-const users = require("../models/users.js")
-const fs = require("fs")
-const path = require("path")
 
-exports.getUsers = (req,res) => {
+const Users = require("../models/users")
+
+
+exports.getUsers = async(req,res) => {
+    const users = await Users.find({}).select("-password");
     return res.json(users)
 }
 
-exports.getUser = (req, res) => {
-    const id = req.params["id"];
-    const user =  users.find((item) => item.id == id);
-    return res.json(user)
+exports.getUser = async(req,res) => {
+  try {
+      const id = req.params.id;
+
+      const user =  await Users.findById(id).select("-password");
+
+      if (!user) {
+          res.status(404).json({error: "User not found"})
+      }
+      return res.json(user)
+  } catch (e) {
+     return res.status(500).json(e)
+  }
 }
 
-exports.createUser = (req, res) => {
-    const data = req.body;
+exports.createUser = async(req, res) => {
+   try {
+       const data = req.body;
 
-    let user = users[users.length - 1]?.id;
+       const isUserExist = await Users.findOne({
+           phone: data.phone
+       })
 
+       if (isUserExist) {
+           return res.status(400).json({
+               error: "User already exists"
+           })
+       }
 
-    const reqObject = {
-        id: ++user || 1,
-        ...data
+       const creation = new Users(data);
+       await creation.save();
+       return res.json(creation)
+   } catch (e) {
+       return res.status(500).json(e)
+   }
+}
+
+exports.deleteUser = async(req, res) => {
+    try {
+        const id = req.params?.id;
+        if(!await Users.findByIdAndDelete(id)) {
+            return res.status(500).json({error: "User not exist"})
+        }
+        return res.status(204).json();
+    } catch (e) {
+        return  res.status(500).json(e)
     }
-
-
-    users.push(reqObject)
-
-
-    return res.json(users)
 }
 
-exports.deleteUser = (req, res) => {
-    const id = req.params?.id;
-     return res.json(users.filter(((item) => item.id !== Number(id))))
-}
+exports.updateUser = async (req, res) => {
+    try {
+        const id = req.params?.id;
+        const data = req.body;
 
-exports.updateUser = (req, res) => {
-    const id = req.params?.id;
-    const data = req.body;
-    const user = users.find((item) => item.id === Number(id))
-    if (!user) {
-        return res.status(404).json({error:"User not exist"})
+        const user = await Users.findByIdAndUpdate(id, {
+            ...data
+        }, {
+            new:true
+        }).select("-password")
+
+        return res.json({
+           user,
+            message: "User updated successfuly"
+        })
+    } catch (e) {
+        return  res.status(500).json(e)
     }
-    user.name = data.name;
-    user.bio = data.bio;
-    return res.json(user)
 }
