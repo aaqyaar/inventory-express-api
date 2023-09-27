@@ -2,7 +2,12 @@ const express = require("express");
 const logger = require("morgan");
 const { readdirSync} = require("fs")
 const path = require("path")
+const connect = require("./config/db")
+
 require("dotenv").config();
+
+connect(process.env.MONGO_URI)
+
 
 const app = express();
 
